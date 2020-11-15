@@ -15,7 +15,6 @@ MAX_TCP_PAYLOAD = 1024
 DEFAULT_PORT = 12345
 
 def authenticate(username, password):
-    
     return 1
 
 def register(username, password, usertype):
@@ -28,7 +27,7 @@ def createclass(classname):
 def handleClient(clientSocket, address):
     try:
         msg = utils.receivePacket(clientSocket, TCP_BUFFER)
-        RequestObj = pickle.loads(msg)
+        RequestObj = myAppProtocol.Request(pickle.loads(msg))
         if(RequestObj.command=="LOGIN"):
             if(authenticate(RequestObj.username, RequestObj.password)):
                 msg = "Login Success"
