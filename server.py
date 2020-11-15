@@ -7,6 +7,7 @@ import threading
 import time
 import json
 import myAppProtocol
+import utils
 
 # Constants
 TCP_BUFFER = 1024
@@ -26,7 +27,7 @@ def createclass(classname):
 
 def handleClient(clientSocket, address):
     try:
-        msg = clientSocket.recv(TCP_BUFFER)
+        msg = utils.receivePacket(clientSocket, TCP_BUFFER)
         RequestObj = pickle.loads(msg)
         if(RequestObj.command=="LOGIN"):
             if(authenticate(RequestObj.username, RequestObj.password)):
