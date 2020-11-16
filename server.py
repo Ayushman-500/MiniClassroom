@@ -1,24 +1,32 @@
 # Libraries
 import socket
-import pickle
 import sys
 import os
 import threading
 import time
 import json
 import myAppProtocol
-import utils
+import sqlite3
 
 # Constants
 TCP_BUFFER = 1024
 MAX_TCP_PAYLOAD = 1024
 DEFAULT_PORT = 12345
 
+def getcursortodb():
+    conn = sqlite3.connect("./sqlitedb.db")
+    c = conn.cursor()
+    return c
+
+
 def authenticate(username, password):
+
     return 1
 
 def register(username, password, usertype):
-    
+    # c = getcursortodb()
+    # c.execute("CREATE TABLE IF NOT EXISTS users ( id integer PRIMARY KEY AUTOINCREMENT, username text NOT NULL, password text, usertype text NOT NULL);")
+    print("Registering")
     return 1
 
 def createclass(classname):
@@ -26,42 +34,57 @@ def createclass(classname):
 
 def handleClient(clientSocket, address):
     try:
-        msg = utils.receivePacket(clientSocket, TCP_BUFFER)
-        RequestObj = myAppProtocol.Request(pickle.loads(msg))
-        if(RequestObj.command=="LOGIN"):
-            if(authenticate(RequestObj.username, RequestObj.password)):
+        msg = myAppProtocol.receiveAppProtocolPacket(clientSocket, TCP_BUFFER)
+        RequestObj = json.loads(msg)
+        print(f"Received from {address}: {RequestObj}")
+        print(RequestObj["command"])
+        
+        if(RequestObj["command"]=="LOGIN"):
+            if(authenticate(RequestObj["username"], RequestObj["password"])):
                 msg = "Login Success"
-                clientSocket.sendall(bytes(msg,"utf-8"))
-        elif(RequestObj.command=="REGISTER"):
-            if(register(RequestObj.username, RequestObj.password, RequestObj.usertype)):
+                response = myAppProtocol.Response(0, msg)
+                myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+        
+        elif(RequestObj["command"]=="REGISTER"):
+            if(register(RequestObj["username"], RequestObj["password"], RequestObj["usertype"])):
                 msg = "Successfully Registered!!!"
-                clientSocket.sendall(bytes(msg,"utf-8"))
-        elif(RequestObj.command=="CREATECLASS"):
-            if(authenticate(RequestObj.username, RequestObj.password)):
-                if(RequestObj.usertype=="INSTRUCTOR"):
-                    if not createclass(RequestObj.classname):
+                response = myAppProtocol.Response(0, msg)
+                myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+        
+        elif(RequestObj["command"]=="CREATECLASS"):
+            if(authenticate(RequestObj["username"], RequestObj["password"])):
+                if(RequestObj["usertype"]=="INSTRUCTOR"):
+                    if not createclass(RequestObj["classname"]):
                         msg = "Class creation failed :("
-                        clientSocket.sendall(bytes(msg,"utf-8"))
+                        response = myAppProtocol.Response(1, msg)
+                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
                     else:
                         msg = "Class Successfully Created!!!"
-                        clientSocket.sendall(bytes(msg,"utf-8"))
+                        response = myAppProtocol.Response(0, msg)
+                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
                 else:
                     msg = "Students cannot create class"
-                    clientSocket.sendall(bytes(msg,"utf-8"))
-        elif(RequestObj.command=="POST"):
+                    response = myAppProtocol.Response(1, msg)
+                    myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+        
+        elif(RequestObj["command"]=="POST"):
             # todo
             return
-        elif(RequestObj.command=="JOINCLASS"):
+        
+        elif(RequestObj["command"]=="JOINCLASS"):
             # todo
             return
+        
         else:
             msg = "Operation not available."
-            clientSocket.sendall(bytes(msg,"utf-8"))
+            response = myAppProtocol.Response(1, msg)
+            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
         
     except Exception as e:
-        clientSocket.send(bytes(e, 'utf-8'))
+        clientSocket.send(bytes(str(e), 'utf-8'))
     finally:
         clientSocket.close()
+        print(f"Connection from {address} has been terminated.")
 
 
 # Creating TCP server socket
@@ -73,7 +96,6 @@ serverSocket.listen(10) # Can establish upto 10 concurrent TCP Connections
 
 # Listen for incomming connections
 while True:
-    print("Waiting for Connection")
     clientSocket, address = serverSocket.accept()
     print(f"Connection from {address} has been established.")
     threading.Thread(target=handleClient, args=(clientSocket, address,)).start()
