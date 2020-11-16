@@ -14,7 +14,7 @@ socket.connect(('', 12345))
 username = None
 password = None
 
-print("1.Login \n 2.Register")
+print("1.Login \n2.Register")
 cmd = int(input())
 if(cmd==1):
     print("Username:")

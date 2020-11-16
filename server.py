@@ -13,43 +13,78 @@ TCP_BUFFER = 1024
 MAX_TCP_PAYLOAD = 1024
 DEFAULT_PORT = 12345
 
-def getcursortodb():
+def getconnectiontodb():
     conn = sqlite3.connect("./sqlitedb.db")
-    c = conn.cursor()
-    return c
+    cursor = conn.cursor()
+    return conn, cursor
 
 
 def authenticate(username, password):
+    conn, c = getconnectiontodb()
+    
+    c.execute("SELECT password FROM users WHERE username=?", (username,))
+    rows = c.fetchall()
+
+    if(len(rows)==0 or rows[0][0]!=password):
+        return 0
 
     return 1
+
 
 def register(username, password, usertype):
-    # c = getcursortodb()
-    # c.execute("CREATE TABLE IF NOT EXISTS users ( id integer PRIMARY KEY AUTOINCREMENT, username text NOT NULL, password text, usertype text NOT NULL);")
-    print("Registering")
+    conn, c = getconnectiontodb()
+
+    # Create table if not exists
+    c.execute("CREATE TABLE IF NOT EXISTS users (username text NOT NULL UNIQUE, password text, usertype text NOT NULL);")
+    
+    # check if same username already exists
+    query = f"SELECT * FROM users WHERE username LIKE '{username}'"
+    c.execute(query)
+    rows = c.fetchall()
+    if(len(rows)>0):
+        return 2
+    
+    # insert new user into database
+    c.execute("INSERT INTO users (username, password, usertype) VALUES (?, ?, ?)", (username, password, usertype))
+    conn.commit()
     return 1
+
 
 def createclass(classname):
     return 1
+
 
 def handleClient(clientSocket, address):
     try:
         msg = myAppProtocol.receiveAppProtocolPacket(clientSocket, TCP_BUFFER)
         RequestObj = json.loads(msg)
         print(f"Received from {address}: {RequestObj}")
-        print(RequestObj["command"])
         
+        response = None
         if(RequestObj["command"]=="LOGIN"):
+            
             if(authenticate(RequestObj["username"], RequestObj["password"])):
-                msg = "Login Success"
+                msg = "Login Success! Enjoy"
                 response = myAppProtocol.Response(0, msg)
-                myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+            else:
+                msg = "Invalid Username or Password"
+                response = myAppProtocol.Response(1, msg)
+            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+        
         
         elif(RequestObj["command"]=="REGISTER"):
-            if(register(RequestObj["username"], RequestObj["password"], RequestObj["usertype"])):
+            reg = register(RequestObj["username"], RequestObj["password"], RequestObj["usertype"])
+            if(reg==1):
                 msg = "Successfully Registered!!!"
                 response = myAppProtocol.Response(0, msg)
-                myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+            elif(reg==2):
+                msg = "Username already exists."
+                response = myAppProtocol.Response(1, msg)
+            else:
+                msg = "Registration Error!"
+                response = myAppProtocol.Response(1, msg)
+            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+        
         
         elif(RequestObj["command"]=="CREATECLASS"):
             if(authenticate(RequestObj["username"], RequestObj["password"])):
@@ -57,15 +92,14 @@ def handleClient(clientSocket, address):
                     if not createclass(RequestObj["classname"]):
                         msg = "Class creation failed :("
                         response = myAppProtocol.Response(1, msg)
-                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
                     else:
                         msg = "Class Successfully Created!!!"
                         response = myAppProtocol.Response(0, msg)
-                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
                 else:
                     msg = "Students cannot create class"
                     response = myAppProtocol.Response(1, msg)
-                    myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+        
         
         elif(RequestObj["command"]=="POST"):
             # todo
@@ -81,7 +115,8 @@ def handleClient(clientSocket, address):
             myAppProtocol.sendAppProtocolPacket(clientSocket, response)
         
     except Exception as e:
-        clientSocket.send(bytes(str(e), 'utf-8'))
+        response = myAppProtocol.Response(1, str(e))
+        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
     finally:
         clientSocket.close()
         print(f"Connection from {address} has been terminated.")
