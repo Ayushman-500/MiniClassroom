@@ -220,12 +220,11 @@ def handleClient(clientSocket, address):
                     response = myAppProtocol.Response(0, msg, LOC_CMD_MAP["LOGINPAGE"])
                     myAppProtocol.sendAppProtocolPacket(clientSocket, response)
                 
-                clientState = getClientState(RequestObj["username"])
+                usertype, clientState = getClientState(RequestObj["username"])
 
                 if(RequestObj["command"] in clientState["cmd_list"]):
                     
                     if(RequestObj["command"]=="HOME"):
-                        usertype = getUserType(RequestObj["username"])
                         clientstate = None
                         if(usertype=="INSTRUCTOR"):
                             clientstate = createNewClientState("HOME_INSTRUCTOR", LOC_CMD_MAP["HOME_INSTRUCTOR"], -1)
@@ -234,6 +233,9 @@ def handleClient(clientSocket, address):
                         saveClientState(RequestObj["username"], clientstate)
                     
                     # handle other commands
+                    else:
+                        response = myAppProtocol.Response(1, "Comming Soon", clientState["cmd_list"])
+                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
                     
                 else:
                     response = myAppProtocol.Response(1, "Invalid Command", clientState["cmd_list"])
