@@ -22,6 +22,7 @@ LOC_CMD_MAP = {"LOGINPAGE":["LOGIN", "REGISTER"],
             "HOME_STUDENT":["JOIN CLASS", "MY CLASSES", "LOGOUT"],
             "INSIDECLASS_STUDENT":["HOME","GET ALL POSTS", "GET POSTS BY KEYWORD", "LOGOUT"]}
 
+lock = threading.Lock()
 
 # Database Connections
 def getconnectiontodb():
@@ -41,9 +42,13 @@ def saveClientState(username, client_state):
     c.execute("SELECT usertype FROM users WHERE username=?", (username,))
     rows = c.fetchall()
     usertype = rows[0][0]
-    c.execute("DELETE FROM onlineUsers WHERE username=?", (username,))
-    c.execute("INSERT INTO onlineUsers (username, usertype, clientstate) VALUES (?, ?, ?)", (username, usertype, client_state))
-    conn.commit()
+    try:
+        lock.acquire()
+        c.execute("DELETE FROM onlineUsers WHERE username=?", (username,))
+        c.execute("INSERT INTO onlineUsers (username, usertype, clientstate) VALUES (?, ?, ?)", (username, usertype, client_state))
+        conn.commit()
+    finally:
+        lock.release()
 
 def getClientState(username):
     conn, c = getconnectiontodb()
@@ -55,8 +60,12 @@ def getClientState(username):
 
 def removeClientState(username):
     conn, c = getconnectiontodb()
-    c.execute("DELETE FROM onlineUsers WHERE username=?", (username,))
-    conn.commit()
+    try:
+        lock.acquire()
+        c.execute("DELETE FROM onlineUsers WHERE username=?", (username,))
+        conn.commit()
+    finally:
+        lock.release()
 
 def isClientStatePresent(username):
     conn, c = getconnectiontodb()
@@ -104,8 +113,12 @@ def login(username, password):
 def register(username, password, usertype):
     conn, c = getconnectiontodb()
 
-    # Create table if not exists
-    c.execute("CREATE TABLE IF NOT EXISTS users (username text NOT NULL UNIQUE, password text, usertype text NOT NULL);")
+    try:
+        lock.acquire()
+        # Create table if not exists
+        c.execute("CREATE TABLE IF NOT EXISTS users (username text NOT NULL UNIQUE, password text, usertype text NOT NULL);")
+    finally:
+        lock.release()
     
     # check if same username already exists
     query = f"SELECT * FROM users WHERE username LIKE '{username}'"
@@ -114,9 +127,13 @@ def register(username, password, usertype):
     if(len(rows)>0):
         return 2
     
-    # insert new user into database
-    c.execute("INSERT INTO users (username, password, usertype) VALUES (?, ?, ?)", (username, password, usertype))
-    conn.commit()
+    try:
+        lock.acquire()
+        # insert new user into database
+        c.execute("INSERT INTO users (username, password, usertype) VALUES (?, ?, ?)", (username, password, usertype))
+        conn.commit()
+    finally:
+        lock.release()
 
     # Save client state
     clientstate = None
