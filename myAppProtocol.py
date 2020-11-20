@@ -1,13 +1,10 @@
 import json
 
-COMMANDS= ["LOGIN", "REGISTER", "CREATECLASS", "POST", "JOINCLASS"]
 USERTYPE = ["INSTRUCTOR", "STUDENT"]
 ENDPACKETPATTERN = '\r\n'
 
 class Request:
     def __init__(self, command, username, password):
-        if command not in COMMANDS:
-            raise Exception("Invalid Command")
         self.dict = {"command":command, "username":username, "password":password}
     
     def __repr__(self):
@@ -31,8 +28,8 @@ class Request:
 
 
 class Response:
-    def __init__(self, error, msg):
-        self.dict = {"error":error, "message":msg}
+    def __init__(self, error, msg, cmd_list):
+        self.dict = {"error":error, "message":msg, "cmd_list":cmd_list}
     
     def __repr__(self):
         return json.dumps(self.dict)
