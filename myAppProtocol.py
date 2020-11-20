@@ -4,9 +4,13 @@ USERTYPE = ["INSTRUCTOR", "STUDENT"]
 ENDPACKETPATTERN = '\r\n'
 
 class Request:
-    def __init__(self, command, username, password):
-        self.dict = {"command":command, "username":username, "password":password}
+    def __init__(self, command):
+        self.dict = {"command":command}
     
+    def setuserdetails(self, username, password):
+        self.dict["username"] = username
+        self.dict["password"] = password
+
     def __repr__(self):
         return json.dumps(self.dict)
     
@@ -18,10 +22,9 @@ class Request:
     def setnewclassparams(self, classname):
         self.dict["classname"] = classname
     
-    def setpostparams(self, postkeyword, postcontent, classid):
+    def setpostparams(self, postkeyword, postcontent):
         self.dict["postkeyword"] = postkeyword
         self.dict["postcontent"] = postcontent
-        self.dict["classid"] = classid
     
     def setjoinclassparams(self, classid):
         self.dict["classid"] = classid
