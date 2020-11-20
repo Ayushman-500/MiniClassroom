@@ -4,7 +4,7 @@ Terminal 1: python3 server.py
 Terminal 2: python3 client.py
 Terminal 2 will then show instructions to proceed.
 
-![Client States](./MiniClassStates.png)
+![Client States](MiniClassStates.png)
 
 ## Client and Server side logic
 Client connects to the server and sends a GETLOGINPAGE command to get the LOGINPAGE. The server responds with a list of available commands. Then the TCP connection is closed.
