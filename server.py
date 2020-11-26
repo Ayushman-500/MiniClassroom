@@ -171,12 +171,49 @@ def getClassId(classname):
     class_id = None #replace None with class_id from classes database
     return class_id
 
+def getpost(class_id,username):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        # Create table if not exists
+        c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id int(100) NOT NULL AUTO_INCREMENT, classId int(100) NOT NULL,username text NOT NULL,keyword VARCHAR(250) NOT NULL,Content text NOT NULL,timestamp timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,);")
+    finally:
+        lock.release()
+    query = f"SELECT * FROM posts"+ str(class_id)+ " ORDER BY timestamp;"
+    c.execute(query)
+    rows = c.fetchall()
+    json_output = json.dumps(rows)
+    return(json_output)
 
+    
 # Get Create Posts
-def createpost():
+def createpost(class_id,username,keyword,Content):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        # Create table if not exists
+        c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id int(100) NOT NULL AUTO_INCREMENT, classId int(100) NOT NULL,username text NOT NULL,keyword VARCHAR(250) NOT NULL,Content text NOT NULL,timestamp timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,);")
+    finally:
+        lock.release()
+    try:
+        lock.acquire()
+        # insert new post into database
+        c.execute("INSERT INTO posts"+ str(class_id)+" (id, classId,username,keyword,Content,timestamp) VALUES (NULL,?, ?,?,?,NULL)", (class_id,username, keyword, Content))
+        conn.commit()
+    finally:
+        lock.release()
+
+    # Save client state
+    clientstate = None
+    clientstate = createNewClientState(LOCS[3], LOC_CMD_MAP[LOCS[3]], class_id)
+    saveClientState(username, clientstate)
+    
+    conn.commit()
+    
+    return 1
+
     # Create new post with class_id from clientstate in onlineUsers db
     # Save client state with LOCS[3]
-    return 1
 # ...
 # other funcs
 
@@ -240,7 +277,6 @@ def handleClient(clientSocket, address):
                 usertype, clientState = getClientState(RequestObj["username"])
 
                 if(RequestObj["command"] in clientState["cmd_list"]):
-                    
                     if(RequestObj["command"]=="HOME"):
                         clientstate = None
                         if(usertype=="INSTRUCTOR"):
@@ -248,7 +284,28 @@ def handleClient(clientSocket, address):
                         else:
                             clientstate = createNewClientState("HOME_STUDENT", LOC_CMD_MAP["HOME_STUDENT"], -1)
                         saveClientState(RequestObj["username"], clientstate)
-                    
+                        response = myAppProtocol.Response(0, msg, LOC_CMD_MAP["LOGINPAGE"])
+                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                    elif(RequestObj["command"]=="NEW POST"):
+                        usertype, clientState = getClientState(RequestObj["username"])
+                        if(clientState['class_id'] ==-1):
+                            response = myAppProtocol.Response(1, "Login to a class first", clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                        else:
+                            createpost(clientState['class_id'],RequestObj["username"],RequestObj["postkeyword"],RequestObj["postcontent"])
+                            saveClientState(RequestObj["username"], clientstate)
+                            response = myAppProtocol.Response(0, "Posted Succesfully", LOC_CMD_MAP[LOCS[4]])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                    elif(RequestObj["command"]=="GET ALL POSTS"):
+                        usertype, clientState = getClientState(RequestObj["username"])
+                        if(clientState['class_id'] ==-1):
+                            response = myAppProtocol.Response(1, "Login to a class first", clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                        else:
+                            rows = getpost(clientState['class_id'],username)
+                            response = myAppProtocol.Response(1, rows, clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+    
                     # handle other commands
                     else:
                         response = myAppProtocol.Response(1, "Comming Soon", clientState["cmd_list"])

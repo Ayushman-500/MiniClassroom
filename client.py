@@ -12,7 +12,7 @@ COMMANDS = {1: "LOGIN", 2: "REGISTER", 3: "CREATECLASS", 4: "POST", 5: "JOINCLAS
 
 def getConnectiontoServer():
     Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    Socket.connect(('', 12345))
+    Socket.connect((socket.gethostname(), 12345))
     return Socket
     
 
@@ -77,8 +77,7 @@ while True:
             postkeyword = input()
             print("Post Content:")
             postcontent = input()
-            request.setpostparams(postkeyword, postcontent)
-        
+            request.setpostparams(postkeyword, postcontent)      
         elif cmd=="JOIN CLASS":
             print("Class Code")
             classid = int(input())
