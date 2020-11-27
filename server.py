@@ -173,8 +173,9 @@ def createClass(username, classname):
         c.execute("SELECT classroomId FROM classrooms ORDER BY classroomId DESC LIMIT 1;")
         classroomId = c.fetchall()[0][0]
         # Creating the table for that classroom
-        c.execute(f"CREATE TABLE {classname}_{classroomId} (postId INTEGER PRIMARY KEY AUTOINCREMENT, \
-                    postContent text NOT NULL, discussionId INTEGER NOT NULL, discussionContent text NOT NULL)")
+        query = "CREATE TABLE `{}_{}` (postId INTEGER PRIMARY KEY AUTOINCREMENT, \
+            postContent text NOT NULL, discussionId INTEGER NOT NULL, discussionContent text NOT NULL)".format(classname, classroomId)
+        c.execute(query)
         conn.commit()
     finally:
         lock.release()
@@ -195,13 +196,11 @@ def joinClass(classroomId, username):
         # Create the metadata about the classroomMembers if not exists
         c.execute("CREATE TABLE IF NOT EXISTS classroomMembers (classroomId integer UNSIGNED NOT NULL,\
                     username text NOT NULL);")
-        # Entering that user into that classroom
-        c.execute("INSERT INTO classroomMembers (classroomId, username) VALUES (?, ?)", (classroomId, username,))
         conn.commit()
     finally:
         lock.release()
 
-    # From here we will go to my classes and thus save the state accordingly
+    # From here we will go to my classes and get the current classes the user is enrolled in
     usertype = getUserType(username)
     myClasses(username, usertype)
 
@@ -210,50 +209,21 @@ def joinClass(classroomId, username):
     for pos in range(1,len(list(clientState["cmd_list"]))):
         if clientState["cmd_list"][pos][1]==classroomId:
             return 3
-    return 1
-def getpost(class_id,username):
-    conn, c = getconnectiontodb()
+            
+    
     try:
         lock.acquire()
-        # Create table if not exists
-        c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,keyword text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
-    finally:
-        lock.release()
-    query = f"SELECT * FROM posts"+ str(class_id)+ " ORDER BY date DESC;"
-    c.execute(query)
-    rows = c.fetchall()
-    json_output = json.dumps(rows)
-    return(json_output)
-
-def createpost(class_id,username,keyword,Content):
-    conn, c = getconnectiontodb()
-    try:
-        lock.acquire()
-        # Create table if not exists
-        c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,keyword text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
-    finally:
-        lock.release()
-    try:
-        lock.acquire()
-        # insert new post into database
-        c.execute("INSERT INTO posts"+ str(class_id)+" (id, classId,username,keyword,Content,date) VALUES (NULL,?, ?,?,?,?)", (class_id,username, keyword, Content,datetime.datetime.now()))
+        # Entering that user into that classroom
+        c.execute("INSERT INTO classroomMembers (classroomId, username) VALUES (?, ?)", (classroomId, username,))
         conn.commit()
     finally:
         lock.release()
+
+    # Updating the client state for the joined class
+    classname = getClassname(classroomId)
+    clientState["cmd_list"].append([classname, classroomId])
+    saveClientState(username, clientState)
     return 1
-def getpostbykeyword(class_id,username,keyword):
-    conn, c = getconnectiontodb()
-    try:
-        lock.acquire()
-        # Create table if not exists
-        c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,    text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
-    finally:
-        lock.release()
-    query = f"SELECT * FROM posts"+ str(class_id)+ " WHERE keyword LIKE '" + str(keyword) + "' ORDER BY date DESC;"
-    c.execute(query)
-    rows = c.fetchall()
-    json_output = json.dumps(rows)
-    return(json_output)
 
 
 def myClasses(username, usertype):
@@ -290,11 +260,61 @@ def myClasses(username, usertype):
     saveClientState(username, clientState)
     return 1
 
+
 def getClassname(classroomId):
     conn, c = getconnectiontodb()
     c.execute("SELECT classname FROM classrooms WHERE classroomId =?", (classroomId,))
-    classname = c.fetchall()[0]
+    classname = c.fetchall()[0][0]
     return classname
+
+
+def getpost(class_id,username):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        # Create table if not exists
+        c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,keyword text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
+    finally:
+        lock.release()
+    query = f"SELECT * FROM posts"+ str(class_id)+ " ORDER BY date DESC;"
+    c.execute(query)
+    rows = c.fetchall()
+    json_output = json.dumps(rows)
+    return(json_output)
+
+
+def createpost(class_id,username,keyword,Content):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        # Create table if not exists
+        c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,keyword text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
+    finally:
+        lock.release()
+    try:
+        lock.acquire()
+        # insert new post into database
+        c.execute("INSERT INTO posts"+ str(class_id)+" (id, classId,username,keyword,Content,date) VALUES (NULL,?, ?,?,?,?)", (class_id,username, keyword, Content,datetime.datetime.now()))
+        conn.commit()
+    finally:
+        lock.release()
+    return 1
+
+
+def getpostbykeyword(class_id,username,keyword):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        # Create table if not exists
+        c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,    text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
+    finally:
+        lock.release()
+    query = f"SELECT * FROM posts"+ str(class_id)+ " WHERE keyword LIKE '" + str(keyword) + "' ORDER BY date DESC;"
+    c.execute(query)
+    rows = c.fetchall()
+    json_output = json.dumps(rows)
+    return(json_output)
+    
 
 
 def createDiscussion(username, class_id, topic):
@@ -375,10 +395,7 @@ def checkDisscussionIDinClassID(discussion_id, class_id):
         return 0
     return 1
 
-# Get Create Posts
 
-# ...
-# other funcs
 
 
 def handleClient(clientSocket, address):
@@ -456,11 +473,11 @@ def handleClient(clientSocket, address):
                         username, classname = RequestObj["username"], RequestObj["classname"]
                         if (createClass(username, classname)):
                             usertype, clientState = getClientState(RequestObj["username"])
-                            msg = f"New class {classname} created successfully" + "\n\n" + \
-                                "Here are the list of your current classrooms"
+                            msg = "New class {} created successfully".format(classname) + "\n\n" + \
+                                "Here is the list of your current classrooms"
                             response = myAppProtocol.Response(0, msg, clientState["cmd_list"])
                         else:
-                            msg = f"Error while creating class {classname}"
+                            msg = "Error while creating class {}".format(classname)
                             response = myAppProtocol.Response(1, msg, LOC_CMD_MAP["HOME_INSTRUCTOR"])
                         myAppProtocol.sendAppProtocolPacket(clientSocket, response)
 
@@ -469,20 +486,20 @@ def handleClient(clientSocket, address):
                         result = joinClass(classroomId, username)
                         usertype, clientState = getClientState(RequestObj["username"])
                         if (result==2):
-                            msg = f"No classroom for this code {classroomId}" 
+                            msg = "No classroom for this code {}".format(classroomId) 
                             response = myAppProtocol.Response(1, msg, LOC_CMD_MAP["HOME_STUDENT"])
                         elif (result==3):
-                            classname = getClassname(classroomId)[0] + "_" + str(classroomId)
-                            msg = f"You are already enrolled in the classroom {classname}" + "\n\n" + \
+                            classname = getClassname(classroomId) + "_" + str(classroomId)
+                            msg = "You are already enrolled in the classroom {}".format(classname) + "\n\n" + \
                                 "Here is the list of your current classrooms"
                             response = myAppProtocol.Response(0, msg, clientState["cmd_list"])
                         elif (result==1):
-                            classname = getClassname(classroomId)[0] + "_" + str(classroomId)
-                            msg = f"You are successfully enrolled in the classroom {classname}" + "\n\n" + \
+                            classname = getClassname(classroomId) + "_" + str(classroomId)
+                            msg = "You are successfully enrolled in the classroom {}".format(classname) + "\n\n" + \
                                 "Here is the list of your current classrooms"
                             response = myAppProtocol.Response(0, msg, clientState["cmd_list"])
                         else:
-                            msg = f"Error while joining the class via code{classroomId}"
+                            msg = "Error while joining the class via code{}".format(classroomId)
                             response = myAppProtocol.Response(1, msg, LOC_CMD_MAP["HOME_INSTRUCTOR"])
                         myAppProtocol.sendAppProtocolPacket(clientSocket, response)
 
@@ -498,7 +515,7 @@ def handleClient(clientSocket, address):
                             if (result==2):
                                 msg = "You have no classroom for now"
                             else:
-                                msg = f"Error while showing the list of classrooms"
+                                msg = "Error while showing the list of classrooms"
                             if (usertype=="INSTRUCTOR"):
                                 response = myAppProtocol.Response(1, msg, LOC_CMD_MAP["HOME_INSTRUCTOR"])
                             else:
@@ -509,8 +526,8 @@ def handleClient(clientSocket, address):
                         username = RequestObj["username"]
                         usertype = getUserType(username)
                         classroomId = RequestObj["command"][1]
-                        classroom = getClassname(classroomId)[0] + "_" + str(classroomId)
-                        msg = f"Welcome to the classroom {classroom}"
+                        classroom = getClassname(classroomId) + "_" + str(classroomId)
+                        msg = "Welcome to the classroom {}".format(classroom)
                         clientstate = None
                         if (usertype=="INSTRUCTOR"):
                             clientstate = createNewClientState("INSIDECLASS_INSTRUCTOR", LOC_CMD_MAP["INSIDECLASS_INSTRUCTOR"], classroomId)
