@@ -202,7 +202,14 @@ def joinClass(classroomId, username):
 
     # From here we will go to my classes and thus save the state accordingly
     usertype = getUserType(username)
-    return myClasses(username, usertype)
+    myClasses(username, usertype)
+
+    # checking if the student is already enrolled in this class
+    usertype, clientState = getClientState(username)
+    for pos in range(1,len(list(clientState["cmd_list"]))):
+        if clientState["cmd_list"][pos][1]==classroomId:
+            return 3
+    return 1
     
 
 def myClasses(username, usertype):
@@ -349,6 +356,11 @@ def handleClient(clientSocket, address):
                         if (result==2):
                             msg = f"No classroom for this code {classroomId}" 
                             response = myAppProtocol.Response(1, msg, LOC_CMD_MAP["HOME_STUDENT"])
+                        elif (result==3):
+                            classname = getClassname(classroomId)[0] + "_" + str(classroomId)
+                            msg = f"You are already enrolled in the classroom {classname}" + "\n\n" + \
+                                "Here is the list of your current classrooms"
+                            response = myAppProtocol.Response(0, msg, clientState["cmd_list"])
                         elif (result==1):
                             classname = getClassname(classroomId)[0] + "_" + str(classroomId)
                             msg = f"You are successfully enrolled in the classroom {classname}" + "\n\n" + \
