@@ -20,7 +20,7 @@ LOC_CMD_MAP = {"LOGINPAGE":["LOGIN", "REGISTER"],
             "MYCLASSES":["HOME"],
             "INSIDECLASS_INSTRUCTOR":["HOME","NEW POST","GET ALL POSTS","GET POST BY KEYWORD", "LOGOUT"],
             "HOME_STUDENT":["JOIN CLASS", "MY CLASSES", "LOGOUT"],
-            "INSIDECLASS_STUDENT":["HOME","GET ALL POSTS", "GET POSTS BY KEYWORD", "LOGOUT"]}
+            "INSIDECLASS_STUDENT":["HOME","GET ALL POSTS", "GET POST BY KEYWORD", "LOGOUT"]}
 
 lock = threading.Lock()
 
@@ -172,8 +172,9 @@ def createClass(username, classname):
         c.execute("SELECT classroomId FROM classrooms ORDER BY classroomId DESC LIMIT 1;")
         classroomId = c.fetchall()[0][0]
         # Creating the table for that classroom
-        c.execute("CREATE TABLE {}_{} (postId INTEGER PRIMARY KEY AUTOINCREMENT, \
-                    postContent text NOT NULL, discussionId INTEGER NOT NULL, discussionContent text NOT NULL)".format(classname,classroomId))
+        query = "CREATE TABLE `{}_{}` (postId INTEGER PRIMARY KEY AUTOINCREMENT, \
+            postContent text NOT NULL, discussionId INTEGER NOT NULL, discussionContent text NOT NULL)".format(classname, classroomId)
+        c.execute(query)
         conn.commit()
     finally:
         lock.release()
@@ -223,10 +224,6 @@ def joinClass(classroomId, username):
     return 1
 
 
-def leaveClass(classroomId, username):
-    pass
-    
-
 def myClasses(username, usertype):
     conn, c = getconnectiontodb()
     try:
@@ -265,12 +262,8 @@ def myClasses(username, usertype):
 def getClassname(classroomId):
     conn, c = getconnectiontodb()
     c.execute("SELECT classname FROM classrooms WHERE classroomId =?", (classroomId,))
-    classname = c.fetchall()[0]
+    classname = c.fetchall()[0][0]
     return classname
-
-# def getClassId(classname):
-#     class_id = None #replace None with class_id from classrooms database
-#     return class_id
 
 
 # Get Create Posts
@@ -373,12 +366,12 @@ def handleClient(clientSocket, address):
                             msg = "No classroom for this code {}".format(classroomId) 
                             response = myAppProtocol.Response(1, msg, LOC_CMD_MAP["HOME_STUDENT"])
                         elif (result==3):
-                            classname = getClassname(classroomId)[0] + "_" + str(classroomId)
+                            classname = getClassname(classroomId) + "_" + str(classroomId)
                             msg = "You are already enrolled in the classroom {}".format(classname) + "\n\n" + \
                                 "Here is the list of your current classrooms"
                             response = myAppProtocol.Response(0, msg, clientState["cmd_list"])
                         elif (result==1):
-                            classname = getClassname(classroomId)[0] + "_" + str(classroomId)
+                            classname = getClassname(classroomId) + "_" + str(classroomId)
                             msg = "You are successfully enrolled in the classroom {}".format(classname) + "\n\n" + \
                                 "Here is the list of your current classrooms"
                             response = myAppProtocol.Response(0, msg, clientState["cmd_list"])
@@ -410,7 +403,7 @@ def handleClient(clientSocket, address):
                         username = RequestObj["username"]
                         usertype = getUserType(username)
                         classroomId = RequestObj["command"][1]
-                        classroom = getClassname(classroomId)[0] + "_" + str(classroomId)
+                        classroom = getClassname(classroomId) + "_" + str(classroomId)
                         msg = "Welcome to the classroom {}".format(classroom)
                         clientstate = None
                         if (usertype=="INSTRUCTOR"):
