@@ -5,13 +5,15 @@ import time
 import pickle
 import myAppProtocol
 import json
+import getpass
 
 TCP_BUFFER = 1024
-COMMANDS = {1: "LOGIN", 2: "REGISTER", 3: "CREATECLASS", 4: "POST", 5: "JOINCLASS"}
+COMMANDS = {1: "LOGIN", 2: "REGISTER", 3: "CREATECLASS", 4: "POST", 5: "JOIN CLASS"}
 
 
 def getConnectiontoServer():
     Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Socket.connect(('', 12345))
     Socket.connect((socket.gethostname(), 12345))
     return Socket
     
@@ -35,28 +37,33 @@ print(responseMsg["message"])
 while True:
     c = 1
     for i in responseMsg["cmd_list"]:
-        print(c,i)
+        if type(i) is list:
+            print(c,*i)
+        else:
+            print(c,i)
         c+=1
     temp = int(input())
     if(not 1<=temp<c):
-        print("Wrong Correct Command Number")
+        print("Wrong Command Number")
         continue
     cmd = responseMsg["cmd_list"][temp-1]
 
     request = myAppProtocol.Request(cmd)
 
     if cmd=="LOGIN":
-        print("Username:")
+        print("Username: ")
         username = input()
-        print("password")
-        password = input()
+        # print("password")
+        # password = input()
+        password = getpass.getpass()
         request.setuserdetails(username, password)
     
     elif cmd=="REGISTER":
-        print("Username:")
+        print("Username: ")
         username = input()
-        print("password")
-        password = input()
+        # print("password")
+        # password = input()
+        password = getpass.getpass()
         request.setuserdetails(username, password)
         print("Usertype (1:Instructor 2:Student)")
         ut = int(input())
