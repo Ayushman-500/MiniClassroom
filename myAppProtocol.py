@@ -28,6 +28,17 @@ class Request:
     
     def setjoinclassparams(self, classid):
         self.dict["classid"] = classid
+    
+    def setnewdiscussionparams(self, topic):
+        self.dict["discussion_topic"] = topic
+    
+    def setgetcommentsparams(self, discussion_id):
+        self.dict["discussion_id"] = discussion_id
+    
+    def setnewcommentparams(self, discussion_id, comment_type, comment):
+        self.dict["discussion_id"] = discussion_id
+        self.dict["comment_type"] = comment_type
+        self.dict["comment"] = comment
 
 
 class Response:

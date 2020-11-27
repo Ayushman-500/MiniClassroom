@@ -19,9 +19,9 @@ LOCS = ["LOGINPAGE", "HOME_INSTRUCTOR", "HOME_STUDENT", "MYCLASSES", "INSIDECLAS
 LOC_CMD_MAP = {"LOGINPAGE":["LOGIN", "REGISTER"],
             "HOME_INSTRUCTOR":["CREATE CLASS", "MY CLASSES", "LOGOUT"],
             "MYCLASSES":["HOME"],
-            "INSIDECLASS_INSTRUCTOR":["HOME","NEW POST","GET ALL POSTS","GET POST BY KEYWORD", "LOGOUT"],
+            "INSIDECLASS_INSTRUCTOR":["HOME","NEW POST","GET ALL POSTS","GET POST BY KEYWORD", "NEW DISCUSSION", "DISCUSSIONS", "GET DISCUSSION COMMENTS", "POST DISCUSSION COMMENT", "LOGOUT"],
             "HOME_STUDENT":["JOIN CLASS", "MY CLASSES", "LOGOUT"],
-            "INSIDECLASS_STUDENT":["HOME","GET ALL POSTS", "GET POSTS BY KEYWORD", "LOGOUT"]}
+            "INSIDECLASS_STUDENT":["HOME","GET ALL POSTS", "GET POST BY KEYWORD", "DISCUSSIONS", "GET DISCUSSION COMMENTS", "POST DISCUSSION COMMENT", "LOGOUT"]}
 
 lock = threading.Lock()
 
@@ -122,7 +122,7 @@ def register(username, password, usertype):
         lock.release()
     
     # check if same username already exists
-    query = f"SELECT * FROM users WHERE username LIKE '{username}'"
+    query = "SELECT * FROM users WHERE username LIKE '{}'".format(username)
     c.execute(query)
     rows = c.fetchall()
     if(len(rows)>0):
@@ -240,12 +240,6 @@ def createpost(class_id,username,keyword,Content):
         conn.commit()
     finally:
         lock.release()
-
-    # Save client state
-    clientstate = None
-    clientstate = createNewClientState(LOCS[3], LOC_CMD_MAP[LOCS[3]], class_id)
-    saveClientState(username, clientstate)
-    conn.commit()
     return 1
 def getpostbykeyword(class_id,username,keyword):
     conn, c = getconnectiontodb()
@@ -302,10 +296,84 @@ def getClassname(classroomId):
     classname = c.fetchall()[0]
     return classname
 
-# def getClassId(classname):
-#     class_id = None #replace None with class_id from classrooms database
-#     return class_id
 
+def createDiscussion(username, class_id, topic):
+    conn, c = getconnectiontodb()
+ 
+    try:
+        lock.acquire()
+        
+        c.execute("CREATE TABLE IF NOT EXISTS discussions (discussionID INTEGER PRIMARY KEY AUTOINCREMENT, \
+                    topic text NOT NULL, classID INTEGER NOT NULL);")
+        
+        c.execute("INSERT INTO discussions (topic, classID) VALUES (?, ?)", (topic, class_id,))
+        conn.commit()
+    finally:
+        lock.release()
+    
+    return 1
+
+def getClassDiscussions(username, class_id):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        c.execute("CREATE TABLE IF NOT EXISTS discussions (discussionID INTEGER PRIMARY KEY AUTOINCREMENT, \
+                    topic text NOT NULL, classID INTEGER NOT NULL);")
+    finally:
+        lock.release()
+    
+    query = "SELECT discussionID, topic FROM discussions WHERE classID = '{}'".format(class_id)
+    c.execute(query)
+    rows = c.fetchall()
+    return json.dumps(rows)
+
+def postDiscussionComment(username, disscussion_id, comment_type, comment):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        # Create table if not exists
+        c.execute("CREATE TABLE IF NOT EXISTS comments (username text NOT NULL, discussionID INTEGER NOT NULL, comment_type text NOT NULL, comment text, date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
+
+        c.execute("INSERT INTO comments (username, discussionID, comment_type, comment, date) VALUES (?,?,?,?,?)", (username, disscussion_id, comment_type, comment, datetime.datetime.now()))
+        conn.commit()
+    finally:
+        lock.release()
+    return 1
+
+def getDiscussionComments(username, discusssion_id):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        # Create table if not exists
+        c.execute("CREATE TABLE IF NOT EXISTS comments (username text NOT NULL, discussionID INTEGER NOT NULL, comment_type text NOT NULL, comment text, date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
+
+    finally:
+        lock.release()
+        
+    query = None
+    if(getUserType(username)=="INSTRUCTOR"):
+        query = "SELECT * FROM comments WHERE discussionID = '{}'".format(discusssion_id)
+    else:
+        query = "SELECT * FROM comments WHERE discussionID = '{}' AND (username = '{}' OR comment_type = 'PUBLIC')".format(discusssion_id,username)
+    c.execute(query)
+    rows = c.fetchall()
+    return json.dumps(rows)
+
+def checkDisscussionIDinClassID(discussion_id, class_id):
+    conn, c = getconnectiontodb()
+ 
+    try:
+        lock.acquire()
+        c.execute("CREATE TABLE IF NOT EXISTS discussions (discussionID INTEGER PRIMARY KEY AUTOINCREMENT, \
+                    topic text NOT NULL, classID INTEGER NOT NULL);")
+    finally:
+        lock.release()
+    
+    c.execute("SELECT * from discussions WHERE discussionID = ? AND classID = ?", (discussion_id, class_id,))
+    rows = c.fetchall()
+    if(len(rows)==0):
+        return 0
+    return 1
 
 # Get Create Posts
 
@@ -480,6 +548,54 @@ def handleClient(clientSocket, address):
                             rows = getpostbykeyword(clientState['class_id'],RequestObj["username"],RequestObj["postkeyword"])
                             response = myAppProtocol.Response(1, rows, clientState["cmd_list"])
                             myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                    
+
+                    elif(RequestObj["command"]=="NEW DISCUSSION"):
+                        class_id = clientState["class_id"]
+                        result = createDiscussion(RequestObj["username"], class_id, RequestObj["discussion_topic"])
+                        response = None
+                        if(result==1):
+                            msg = "Discussion created Successfully!!!"
+                            response = myAppProtocol.Response(0, msg, clientState["cmd_list"])
+                        else:
+                            msg = "Error in creating Discussion. Try Again."
+                            response = myAppProtocol.Response(1, msg, clientState["cmd_list"])
+                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+
+                    elif(RequestObj["command"]=="DISCUSSIONS"):
+                        class_id = clientState["class_id"]
+                        result = getClassDiscussions(RequestObj["username"], class_id)
+                        response = myAppProtocol.Response(0, result, clientState["cmd_list"])
+                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                    
+                    elif(RequestObj["command"]=="GET DISCUSSION COMMENTS"):
+                        class_id = clientState["class_id"]
+                        if(checkDisscussionIDinClassID(RequestObj["discussion_id"], class_id)):
+                            result = getDiscussionComments(RequestObj["username"], RequestObj["discussion_id"])
+                            response = myAppProtocol.Response(0, result, clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                        else:
+                            result = "Please Enter Valid Discussion ID"
+                            response = myAppProtocol.Response(0, result, clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+
+                    elif(RequestObj["command"]=="POST DISCUSSION COMMENT"):
+                        class_id = clientState["class_id"]
+                        if(checkDisscussionIDinClassID(RequestObj["discussion_id"], class_id)):
+                            result = postDiscussionComment(RequestObj["username"], RequestObj["discussion_id"], RequestObj["comment_type"], RequestObj["comment"])
+                            if(result==1):
+                                msg = "Posted Discussion Comment Successfully!!!"
+                                response = myAppProtocol.Response(0, msg, clientState["cmd_list"])
+                            else:
+                                msg = "Error in Commenting. Try Again."
+                                response = myAppProtocol.Response(1, msg, clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                        else:
+                            result = "Please Enter Valid Discussion ID"
+                            response = myAppProtocol.Response(0, result, clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                        
+
                     # handle other commands
                     else:
                         response = myAppProtocol.Response(1, "Comming Soon", clientState["cmd_list"])

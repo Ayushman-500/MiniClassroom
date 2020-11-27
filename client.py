@@ -93,6 +93,24 @@ while True:
             print("Post Keyword:")
             postkeyword = input()
             request.setpostparams(postkeyword,"")
+        elif cmd=="NEW DISCUSSION":
+            print("Discussion Topic: ")
+            topic = input()
+            request.setnewdiscussionparams(topic)
+        elif cmd=="GET DISCUSSION COMMENTS":
+            print("Discussion ID: ")
+            discussion_id = int(input())
+            request.setgetcommentsparams(discussion_id)
+        elif cmd=="POST DISCUSSION COMMENT":
+            print("Discussion ID: ")
+            discussion_id = int(input())
+            print("Comment Type (1: PUBLIC 2:PRIVATE(Visible only to instructor)):")
+            temp = int(input()) - 1
+            l = ['PUBLIC', 'PRIVATE']
+            comment_type = l[temp]
+            print("Comment Comtent: ")
+            comment = input()
+            request.setnewcommentparams(discussion_id, comment_type, comment)
         
     Socket = getConnectiontoServer()
     myAppProtocol.sendAppProtocolPacket(Socket, request)
