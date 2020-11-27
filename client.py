@@ -77,11 +77,19 @@ while True:
             postkeyword = input()
             print("Post Content:")
             postcontent = input()
+<<<<<<< Updated upstream
             request.setpostparams(postkeyword, postcontent)      
+=======
+            request.setpostparams(postkeyword, postcontent)
+>>>>>>> Stashed changes
         elif cmd=="JOIN CLASS":
             print("Class Code")
             classid = int(input())
             request.setjoinclassparams(classid)
+        elif cmd == "GET POST BY KEYWORD":
+            print("Post Keyword:")
+            postkeyword = input()
+            request.setpostparams(postkeyword,"")
         
     Socket = getConnectiontoServer()
     myAppProtocol.sendAppProtocolPacket(Socket, request)

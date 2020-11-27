@@ -7,6 +7,7 @@ import time
 import json
 import myAppProtocol
 import sqlite3
+import datetime
 
 # Constants
 TCP_BUFFER = 1024
@@ -195,6 +196,73 @@ def createpost(class_id,username,keyword,Content):
         c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id int(100) NOT NULL AUTO_INCREMENT, classId int(100) NOT NULL,username text NOT NULL,keyword VARCHAR(250) NOT NULL,Content text NOT NULL,timestamp timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,);")
     finally:
         lock.release()
+<<<<<<< Updated upstream
+=======
+
+    # From here we will go to my classes and thus save the state accordingly
+    usertype = getUserType(username)
+    myClasses(username, usertype)
+
+    # checking if the student is already enrolled in this class
+    usertype, clientState = getClientState(username)
+    for pos in range(1,len(list(clientState["cmd_list"]))):
+        if clientState["cmd_list"][pos][1]==classroomId:
+            return 3
+    return 1
+def getpost(class_id,username):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        # Create table if not exists
+        c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,keyword text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
+    finally:
+        lock.release()
+    query = f"SELECT * FROM posts"+ str(class_id)+ " ORDER BY timestamp DESC;"
+    c.execute(query)
+    rows = c.fetchall()
+    json_output = json.dumps(rows)
+    return(json_output)
+
+def createpost(class_id,username,keyword,Content):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        # Create table if not exists
+        c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,keyword text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
+    finally:
+        lock.release()
+    try:
+        lock.acquire()
+        # insert new post into database
+        c.execute("INSERT INTO posts"+ str(class_id)+" (id, classId,username,keyword,Content,timestamp) VALUES (NULL,?, ?,?,?,?)", (class_id,username, keyword, Content,datetime.datetime.now()))
+        conn.commit()
+    finally:
+        lock.release()
+
+    # Save client state
+    clientstate = None
+    clientstate = createNewClientState(LOCS[3], LOC_CMD_MAP[LOCS[3]], class_id)
+    saveClientState(username, clientstate)
+    conn.commit()
+    return 1
+def getpostbykeyword(class_id,username,keyword):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        # Create table if not exists
+        c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,keyword text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
+    finally:
+        lock.release()
+    query = f"SELECT * FROM posts"+ str(class_id)+ " WHERE keyword LIKE '" + str(keyword) + "' ORDER BY timestamp DESC;"
+    c.execute(query)
+    rows = c.fetchall()
+    json_output = json.dumps(rows)
+    return(json_output)
+
+
+def myClasses(username, usertype):
+    conn, c = getconnectiontodb()
+>>>>>>> Stashed changes
     try:
         lock.acquire()
         # insert new post into database
@@ -212,8 +280,24 @@ def createpost(class_id,username,keyword,Content):
     
     return 1
 
+<<<<<<< Updated upstream
     # Create new post with class_id from clientstate in onlineUsers db
     # Save client state with LOCS[3]
+=======
+def getClassname(classroomId):
+    conn, c = getconnectiontodb()
+    c.execute("SELECT classname FROM classrooms WHERE classroomId =?", (classroomId,))
+    classname = c.fetchall()[0]
+    return classname
+
+# def getClassId(classname):
+#     class_id = None #replace None with class_id from classrooms database
+#     return class_id
+
+
+# Get Create Posts
+
+>>>>>>> Stashed changes
 # ...
 # other funcs
 
@@ -302,10 +386,45 @@ def handleClient(clientSocket, address):
                             response = myAppProtocol.Response(1, "Login to a class first", clientState["cmd_list"])
                             myAppProtocol.sendAppProtocolPacket(clientSocket, response)
                         else:
+<<<<<<< Updated upstream
                             rows = getpost(clientState['class_id'],username)
                             response = myAppProtocol.Response(1, rows, clientState["cmd_list"])
                             myAppProtocol.sendAppProtocolPacket(clientSocket, response)
     
+=======
+                            clientstate = createNewClientState("INSIDECLASS_STUDENT", LOC_CMD_MAP["INSIDECLASS_STUDENT"], classroomId)
+                            response = myAppProtocol.Response(0, msg, LOC_CMD_MAP["INSIDECLASS_STUDENT"])
+                        saveClientState(username, clientstate)
+                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                    elif(RequestObj["command"]=="NEW POST"):
+                        usertype, clientState = getClientState(RequestObj["username"])
+                        if(clientState['class_id'] ==-1):
+                            response = myAppProtocol.Response(1, "Login to a class first", clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                        else:
+                            createpost(clientState['class_id'],RequestObj["username"],RequestObj["postkeyword"],RequestObj["postcontent"])
+                            saveClientState(RequestObj["username"], clientState)
+                            response = myAppProtocol.Response(0, "Posted Succesfully", LOC_CMD_MAP[LOCS[4]])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                    elif(RequestObj["command"]=="GET ALL POSTS"):
+                        usertype, clientState = getClientState(RequestObj["username"])
+                        if(clientState['class_id'] ==-1):
+                            response = myAppProtocol.Response(1, "Login to a class first", clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                        else:
+                            rows = getpost(clientState['class_id'],RequestObj["username"])
+                            response = myAppProtocol.Response(1, rows, clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                    elif(RequestObj["command"]=="GET POST BY KEYWORD"):
+                        usertype, clientState = getClientState(RequestObj["username"])
+                        if(clientState['class_id'] ==-1):
+                            response = myAppProtocol.Response(1, "Login to a class first", clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                        else:
+                            rows = getpostbykeyword(clientState['class_id'],RequestObj["username"],RequestObj["postkeyword"])
+                            response = myAppProtocol.Response(1, rows, clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+>>>>>>> Stashed changes
                     # handle other commands
                     else:
                         response = myAppProtocol.Response(1, "Comming Soon", clientState["cmd_list"])
