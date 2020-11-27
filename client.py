@@ -81,6 +81,9 @@ while True:
             request.setpostparams(postkeyword, postcontent)      
 =======
             request.setpostparams(postkeyword, postcontent)
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         elif cmd=="JOIN CLASS":
             print("Class Code")

@@ -297,6 +297,9 @@ def getClassname(classroomId):
 
 # Get Create Posts
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 # ...
 # other funcs
@@ -424,6 +427,9 @@ def handleClient(clientSocket, address):
                             rows = getpostbykeyword(clientState['class_id'],RequestObj["username"],RequestObj["postkeyword"])
                             response = myAppProtocol.Response(1, rows, clientState["cmd_list"])
                             myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     # handle other commands
                     else:
