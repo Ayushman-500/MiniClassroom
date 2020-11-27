@@ -157,7 +157,6 @@ def getUserType(username):
     return rows[0][0]
 
 
-<<<<<<< HEAD
 # Create classes
 def createClass(username, classname):
     conn, c = getconnectiontodb()
@@ -256,21 +255,6 @@ def getClassname(classroomId):
 # def getClassId(classname):
 #     class_id = None #replace None with class_id from classrooms database
 #     return class_id
-=======
-# Get, Create classes
-def createclass(classname):
-    # Create new class
-    # Save client state
-    return 1
-
-def getClass(classid):
-    # Save client state with
-    return 1
-
-def getClassId(classname):
-    class_id = None #replace None with class_id from classes database
-    return class_id
->>>>>>> 0cc59b1f806ed764e16652f260c79cd34944bec3
 
 
 # Get Create Posts
@@ -339,7 +323,6 @@ def handleClient(clientSocket, address):
                     myAppProtocol.sendAppProtocolPacket(clientSocket, response)
                 
                 usertype, clientState = getClientState(RequestObj["username"])
-<<<<<<< HEAD
                 
                 if(RequestObj["command"] in clientState["cmd_list"]):
                     
@@ -425,18 +408,6 @@ def handleClient(clientSocket, address):
                         
 
 
-=======
-
-                if(RequestObj["command"] in clientState["cmd_list"]):
-                    
-                    if(RequestObj["command"]=="HOME"):
-                        clientstate = None
-                        if(usertype=="INSTRUCTOR"):
-                            clientstate = createNewClientState("HOME_INSTRUCTOR", LOC_CMD_MAP["HOME_INSTRUCTOR"], -1)
-                        else:
-                            clientstate = createNewClientState("HOME_STUDENT", LOC_CMD_MAP["HOME_STUDENT"], -1)
-                        saveClientState(RequestObj["username"], clientstate)
->>>>>>> 0cc59b1f806ed764e16652f260c79cd34944bec3
                     
                     # handle other commands
                     else:
@@ -458,12 +429,8 @@ def handleClient(clientSocket, address):
 # Creating TCP server socket
 serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) #Reusing same port
-<<<<<<< HEAD
 ip = socket.gethostbyname(socket.gethostname())
 serverSocket.bind((ip, DEFAULT_PORT))
-=======
-serverSocket.bind(('', DEFAULT_PORT))
->>>>>>> 0cc59b1f806ed764e16652f260c79cd34944bec3
 
 serverSocket.listen(10) # Can establish upto 10 concurrent TCP Connections
 

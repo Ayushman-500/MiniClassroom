@@ -5,26 +5,16 @@ import time
 import pickle
 import myAppProtocol
 import json
-<<<<<<< HEAD
 import getpass
 
 TCP_BUFFER = 1024
 COMMANDS = {1: "LOGIN", 2: "REGISTER", 3: "CREATECLASS", 4: "POST", 5: "JOIN CLASS"}
-=======
-
-TCP_BUFFER = 1024
-COMMANDS = {1: "LOGIN", 2: "REGISTER", 3: "CREATECLASS", 4: "POST", 5: "JOINCLASS"}
->>>>>>> 0cc59b1f806ed764e16652f260c79cd34944bec3
 
 
 def getConnectiontoServer():
     Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-<<<<<<< HEAD
     # Socket.connect(('', 12345))
     Socket.connect((socket.gethostname(), 12345))
-=======
-    Socket.connect(('', 12345))
->>>>>>> 0cc59b1f806ed764e16652f260c79cd34944bec3
     return Socket
     
 
@@ -47,7 +37,6 @@ print(responseMsg["message"])
 while True:
     c = 1
     for i in responseMsg["cmd_list"]:
-<<<<<<< HEAD
         if type(i) is list:
             print(c,*i)
         else:
@@ -56,20 +45,12 @@ while True:
     temp = int(input())
     if(not 1<=temp<c):
         print("Wrong Command Number")
-=======
-        print(c,i)
-        c+=1
-    temp = int(input())
-    if(not 1<=temp<c):
-        print("Wrong Correct Command Number")
->>>>>>> 0cc59b1f806ed764e16652f260c79cd34944bec3
         continue
     cmd = responseMsg["cmd_list"][temp-1]
 
     request = myAppProtocol.Request(cmd)
 
     if cmd=="LOGIN":
-<<<<<<< HEAD
         print("Username: ")
         username = input()
         # print("password")
@@ -83,19 +64,6 @@ while True:
         # print("password")
         # password = input()
         password = getpass.getpass()
-=======
-        print("Username:")
-        username = input()
-        print("password")
-        password = input()
-        request.setuserdetails(username, password)
-    
-    elif cmd=="REGISTER":
-        print("Username:")
-        username = input()
-        print("password")
-        password = input()
->>>>>>> 0cc59b1f806ed764e16652f260c79cd34944bec3
         request.setuserdetails(username, password)
         print("Usertype (1:Instructor 2:Student)")
         ut = int(input())
