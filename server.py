@@ -298,6 +298,9 @@ def getClassname(classroomId):
 # Get Create Posts
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -428,6 +431,9 @@ def handleClient(clientSocket, address):
                             response = myAppProtocol.Response(1, rows, clientState["cmd_list"])
                             myAppProtocol.sendAppProtocolPacket(clientSocket, response)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
