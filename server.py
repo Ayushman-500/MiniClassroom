@@ -219,7 +219,7 @@ def getpost(class_id,username):
         c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,keyword text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
     finally:
         lock.release()
-    query = f"SELECT * FROM posts"+ str(class_id)+ " ORDER BY timestamp DESC;"
+    query = f"SELECT * FROM posts"+ str(class_id)+ " ORDER BY date DESC;"
     c.execute(query)
     rows = c.fetchall()
     json_output = json.dumps(rows)
@@ -236,7 +236,7 @@ def createpost(class_id,username,keyword,Content):
     try:
         lock.acquire()
         # insert new post into database
-        c.execute("INSERT INTO posts"+ str(class_id)+" (id, classId,username,keyword,Content,timestamp) VALUES (NULL,?, ?,?,?,?)", (class_id,username, keyword, Content,datetime.datetime.now()))
+        c.execute("INSERT INTO posts"+ str(class_id)+" (id, classId,username,keyword,Content,date) VALUES (NULL,?, ?,?,?,?)", (class_id,username, keyword, Content,datetime.datetime.now()))
         conn.commit()
     finally:
         lock.release()
@@ -255,7 +255,7 @@ def getpostbykeyword(class_id,username,keyword):
         c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,    text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
     finally:
         lock.release()
-    query = f"SELECT * FROM posts"+ str(class_id)+ " WHERE keyword LIKE '" + str(keyword) + "' ORDER BY timestamp DESC;"
+    query = f"SELECT * FROM posts"+ str(class_id)+ " WHERE keyword LIKE '" + str(keyword) + "' ORDER BY date DESC;"
     c.execute(query)
     rows = c.fetchall()
     json_output = json.dumps(rows)

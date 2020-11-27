@@ -84,17 +84,7 @@ while True:
             postkeyword = input()
             print("Post Content:")
             postcontent = input()
-<<<<<<< Updated upstream
             request.setpostparams(postkeyword, postcontent)      
-=======
-            request.setpostparams(postkeyword, postcontent)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         elif cmd=="JOIN CLASS":
             print("Class Code")
             classid = int(input())
