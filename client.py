@@ -12,8 +12,8 @@ import time
 TCP_BUFFER = 1024
 COMMANDS = {1: "LOGIN", 2: "REGISTER", 3: "CREATECLASS", 4: "POST", 5: "JOIN CLASS"}
 
-MY_IP = socket.gethostname()
-SERVER_IP = socket.gethostname()
+MY_IP = sys.argv[1]
+SERVER_IP = sys.argv[2]
 
 username = None
 password = None
