@@ -250,10 +250,7 @@ def myClasses(username, usertype):
     else:
         c.execute("SELECT classname, classroomid FROM classrooms WHERE username=?", (username,))
         rows = c.fetchall()
-    
-    if (len(rows) == 0):
-        return 2
-    
+
     # Save client state
     cmd_list = ["HOME"]
     for r in rows:
@@ -261,6 +258,10 @@ def myClasses(username, usertype):
     clientState = None
     clientState = createNewClientState("MYCLASSES", cmd_list, -1)
     saveClientState(username, clientState)
+    
+    if (len(rows) == 0):
+        return 2
+    
     return 1
 
 
