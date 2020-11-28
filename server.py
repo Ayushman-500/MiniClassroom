@@ -14,14 +14,17 @@ TCP_BUFFER = 1024
 MAX_TCP_PAYLOAD = 1024
 DEFAULT_PORT = 12345
 
+MY_IP = socket.gethostname()
+
 LOCS = ["LOGINPAGE", "HOME_INSTRUCTOR", "HOME_STUDENT", "MYCLASSES", "INSIDECLASS_INSTRUCTOR", "INSIDECLASS_STUDENT"]
 
 LOC_CMD_MAP = {"LOGINPAGE":["LOGIN", "REGISTER"],
             "HOME_INSTRUCTOR":["CREATE CLASS", "MY CLASSES", "LOGOUT"],
             "MYCLASSES":["HOME"],
-            "INSIDECLASS_INSTRUCTOR":["HOME","NEW POST","GET ALL POSTS","GET POST BY KEYWORD", "NEW DISCUSSION", "DISCUSSIONS", "GET DISCUSSION COMMENTS", "POST DISCUSSION COMMENT", "LOGOUT"],
+            "INSIDECLASS_INSTRUCTOR":["HOME","NEW POST","GET ALL POSTS","GET POST BY KEYWORD", "NEW DISCUSSION", "DISCUSSIONS", "GET DISCUSSION COMMENTS", "POST DISCUSSION COMMENT", "START SESSION", "LOGOUT"],
             "HOME_STUDENT":["JOIN CLASS", "MY CLASSES", "LOGOUT"],
-            "INSIDECLASS_STUDENT":["HOME","GET ALL POSTS", "GET POST BY KEYWORD", "DISCUSSIONS", "GET DISCUSSION COMMENTS", "POST DISCUSSION COMMENT", "LOGOUT"]}
+            "INSIDECLASS_STUDENT":["HOME","GET ALL POSTS", "GET POST BY KEYWORD", "DISCUSSIONS", "GET DISCUSSION COMMENTS", "POST DISCUSSION COMMENT", "JOIN SESSION", "LOGOUT"],
+            "SESSIONMODE":["GET SESSION USERS", "EXIT SESSION"]}
 
 lock = threading.Lock()
 
@@ -276,7 +279,7 @@ def getpost(class_id,username):
         c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,keyword text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
     finally:
         lock.release()
-    query = f"SELECT * FROM posts"+ str(class_id)+ " ORDER BY date DESC;"
+    query = "SELECT * FROM posts"+ str(class_id)+ " ORDER BY date DESC;"
     c.execute(query)
     rows = c.fetchall()
     json_output = json.dumps(rows)
@@ -309,7 +312,7 @@ def getpostbykeyword(class_id,username,keyword):
         c.execute("CREATE TABLE IF NOT EXISTS posts"+ str(class_id)+" (id INTEGER PRIMARY KEY AUTOINCREMENT, classId INTEGER NOT NULL,username text NOT NULL,    text NOT NULL,Content text NOT NULL,date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);")
     finally:
         lock.release()
-    query = f"SELECT * FROM posts"+ str(class_id)+ " WHERE keyword LIKE '" + str(keyword) + "' ORDER BY date DESC;"
+    query = "SELECT * FROM posts"+ str(class_id)+ " WHERE keyword LIKE '" + str(keyword) + "' ORDER BY date DESC;"
     c.execute(query)
     rows = c.fetchall()
     json_output = json.dumps(rows)
@@ -396,13 +399,79 @@ def checkDisscussionIDinClassID(discussion_id, class_id):
     return 1
 
 
+def createNewSession(username, ip, port, class_id):
+    if(getUserType(username)!="INSTRUCTOR"):
+        return 0
+
+    conn, c = getconnectiontodb()
+ 
+    try:
+        lock.acquire()
+        
+        c.execute("CREATE TABLE IF NOT EXISTS sessions (classID INTEGER NOT NULL, \
+                    username text NOT NULL, ip text NOT NULL, port text NOT NULL);")
+        
+        c.execute("INSERT INTO sessions (classID, username, ip, port) VALUES (?, ?, ?, ?)", (class_id, username, ip, port,))
+        conn.commit()
+    finally:
+        lock.release()
+    
+    return 1
+
+def joinSession(username, ip, port, class_id):
+    conn, c = getconnectiontodb()
+
+    try:
+        lock.acquire()
+        
+        c.execute("CREATE TABLE IF NOT EXISTS sessions (classID INTEGER NOT NULL, \
+                    username text NOT NULL, ip text NOT NULL, port text NOT NULL);")
+    finally:
+        lock.release()
+
+    c.execute("SELECT * FROM sessions WHERE classID = ?",(class_id,))
+    rows = c.fetchall()
+    if(len(rows)==0):
+        return 0
+
+    try:
+        lock.acquire()
+
+        c.execute("INSERT INTO sessions (classID, username, ip, port) VALUES (?, ?, ?, ?)", (class_id, username, ip, port,))
+        conn.commit()
+    finally:
+        lock.release()
+    
+    return 1
+
+def exitSession(ip, port, class_id):
+    conn, c = getconnectiontodb()
+
+    try:
+        lock.acquire()
+
+        c.execute("DELETE FROM sessions WHERE classID = ? AND ip = ? AND port = ?",(class_id, ip, port,))
+        conn.commit()
+    finally:
+        lock.release()
+    
+    return 1
+
+def getSessionUsers(class_id):
+    conn, c = getconnectiontodb()
+
+    c.execute("SELECT username, ip, port FROM sessions WHERE classID = ?",(class_id,))
+    rows = c.fetchall()
+    
+    return json.dumps(rows)
+
 
 
 def handleClient(clientSocket, address):
     try:
         msg = myAppProtocol.receiveAppProtocolPacket(clientSocket, TCP_BUFFER)
         RequestObj = json.loads(msg)
-        print(f"Received from {address}: {RequestObj}")
+        print("Received from {}: {}".format(address,RequestObj))
         
         response = None
 
@@ -593,7 +662,7 @@ def handleClient(clientSocket, address):
                             myAppProtocol.sendAppProtocolPacket(clientSocket, response)
                         else:
                             result = "Please Enter Valid Discussion ID"
-                            response = myAppProtocol.Response(0, result, clientState["cmd_list"])
+                            response = myAppProtocol.Response(1, result, clientState["cmd_list"])
                             myAppProtocol.sendAppProtocolPacket(clientSocket, response)
 
                     elif(RequestObj["command"]=="POST DISCUSSION COMMENT"):
@@ -609,9 +678,54 @@ def handleClient(clientSocket, address):
                             myAppProtocol.sendAppProtocolPacket(clientSocket, response)
                         else:
                             result = "Please Enter Valid Discussion ID"
-                            response = myAppProtocol.Response(0, result, clientState["cmd_list"])
+                            response = myAppProtocol.Response(1, result, clientState["cmd_list"])
                             myAppProtocol.sendAppProtocolPacket(clientSocket, response)
                         
+                    elif(RequestObj["command"]=="START SESSION"):
+                        class_id = clientState["class_id"]
+                        result = createNewSession(RequestObj["username"], RequestObj["ip"], RequestObj["port"] ,class_id)
+                        if(result):
+                            msg = "Session Created Successfully!!!"
+                            clientstate = createNewClientState("SESSIONMODE", LOC_CMD_MAP["SESSIONMODE"],class_id)
+                            saveClientState(RequestObj["username"], clientstate)
+                            response = myAppProtocol.Response(0, msg, clientstate["cmd_list"])
+                        else:
+                            msg = "Error: Session cannot be Created."
+                            response = myAppProtocol.Response(1, msg, clientState["cmd_list"])
+                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                    
+                    elif(RequestObj["command"]=="JOIN SESSION"):
+                        class_id = clientState["class_id"]
+                        result = joinSession(RequestObj["username"], RequestObj["ip"], RequestObj["port"], class_id)
+                        if(result):
+                            msg = "Joined Session Successfully!!!"
+                            clientstate = createNewClientState("SESSIONMODE", LOC_CMD_MAP["SESSIONMODE"],class_id)
+                            saveClientState(RequestObj["username"], clientstate)
+                            response = myAppProtocol.Response(0, msg, clientstate["cmd_list"])
+                        else:
+                            msg = "No session available."
+                            response = myAppProtocol.Response(1, msg, clientState["cmd_list"])
+                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                    
+                    elif(RequestObj["command"]=="EXIT SESSION"):
+                        class_id = clientState["class_id"]
+                        result = exitSession(RequestObj["ip"], RequestObj["port"], class_id)
+                        if(result):
+                            msg = "Session Exited"
+                            if (usertype=="INSTRUCTOR"):
+                                clientstate = createNewClientState("INSIDECLASS_INSTRUCTOR", LOC_CMD_MAP["INSIDECLASS_INSTRUCTOR"], class_id)
+                                response = myAppProtocol.Response(0, msg, LOC_CMD_MAP["INSIDECLASS_INSTRUCTOR"])
+                            else:
+                                clientstate = createNewClientState("INSIDECLASS_STUDENT", LOC_CMD_MAP["INSIDECLASS_STUDENT"], class_id)
+                                response = myAppProtocol.Response(0, msg, LOC_CMD_MAP["INSIDECLASS_STUDENT"])
+                            saveClientState(RequestObj["username"], clientstate)
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                    
+                    elif(RequestObj["command"]=="GET SESSION USERS"):
+                        class_id = clientState["class_id"]
+                        result = getSessionUsers(class_id)
+                        response = myAppProtocol.Response(0, result, clientState["cmd_list"])
+                        myAppProtocol.sendAppProtocolPacket(clientSocket, response)
 
                     # handle other commands
                     else:
@@ -627,14 +741,14 @@ def handleClient(clientSocket, address):
         myAppProtocol.sendAppProtocolPacket(clientSocket, response)
     finally:
         clientSocket.close()
-        print(f"Connection from {address} has been terminated.")
+        print("Connection from {} has been terminated.".format(address))
 
 
 # Creating TCP server socket
 serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) #Reusing same port
 ip = socket.gethostbyname(socket.gethostname())
-serverSocket.bind((ip, DEFAULT_PORT))
+serverSocket.bind((MY_IP, DEFAULT_PORT))
 
 serverSocket.listen(10) # Can establish upto 10 concurrent TCP Connections
 
@@ -648,6 +762,6 @@ conn.commit()
 # Listen for incomming connections
 while True:
     clientSocket, address = serverSocket.accept()
-    print(f"Connection from {address} has been established.")
+    print("Connection from {} has been established.".format(address))
     threading.Thread(target=handleClient, args=(clientSocket, address,)).start()
 

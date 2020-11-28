@@ -6,21 +6,130 @@ import pickle
 import myAppProtocol
 import json
 import getpass
+import threading
+import time
 
 TCP_BUFFER = 1024
 COMMANDS = {1: "LOGIN", 2: "REGISTER", 3: "CREATECLASS", 4: "POST", 5: "JOIN CLASS"}
 
-
-def getConnectiontoServer():
-    Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # Socket.connect(('', 12345))
-    Socket.connect((socket.gethostname(), 12345))
-    return Socket
-    
+MY_IP = socket.gethostname()
+SERVER_IP = socket.gethostname()
 
 username = None
 password = None
 
+def getConnectiontoServer():
+    Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    ip = socket.gethostbyname(socket.gethostname())
+    Socket.connect((SERVER_IP, 12345))
+    return Socket
+
+
+sessionUsersList = None
+exitSession_var = 1
+def updateSessionListThread():
+    global sessionUsersList
+    global exitSession_var
+
+    while True:
+        request = myAppProtocol.Request("GET SESSION USERS")
+        request.setuserdetails(username, password)
+        Socket = getConnectiontoServer()
+        myAppProtocol.sendAppProtocolPacket(Socket, request)
+        responseMsg = myAppProtocol.receiveAppProtocolPacket(Socket,TCP_BUFFER)
+        Socket.close()
+        responseMsg = json.loads(responseMsg)
+        if(responseMsg["error"]==0):
+            temp_list = list(map(lambda x: x.split(','), responseMsg["message"].strip("[]").split("], [")))
+            temp_list2 = list()
+            for i in temp_list:
+                temp = list()
+                temp.append(i[0].strip(' "'))
+                temp.append(i[1].strip(' "'))
+                temp.append(i[2].strip(' "'))
+                temp_list2.append(temp)
+            sessionUsersList = temp_list2[:]
+
+        time.sleep(2.0)
+        if(exitSession_var==1):
+            print("Stopping Session List Thread")
+            break
+    
+
+def chatsSessionThread(clientSocket):
+    global sessionUsersList
+    global exitSession_var
+    clientSocket.settimeout(2.0)
+    while True:
+        try:
+            msg, address = clientSocket.recvfrom(1024)
+            msg = msg.decode("utf-8")
+            for i in sessionUsersList:
+                if(i[1]==address[0] and int(i[2])==address[1]):
+                    print(i[0] + ": " + msg)
+                    break
+        except socket.timeout:
+            if(exitSession_var==1):
+                print("Stopping Chat List Thread")
+                return
+
+
+def exitSession(ip,port):
+    request = myAppProtocol.Request("EXIT SESSION")
+    request.setuserdetails(username, password)
+    request.setsessiondetails(ip,port)
+    Socket = getConnectiontoServer()
+    myAppProtocol.sendAppProtocolPacket(Socket, request)
+    responseMsg = myAppProtocol.receiveAppProtocolPacket(Socket,TCP_BUFFER)
+    Socket.close()
+    responseMsg = json.loads(responseMsg)
+    return responseMsg
+
+
+def broadcastComment(socket, cmt):
+    global sessionUsersList
+    global exitSession_var
+    
+    for i in sessionUsersList:
+        # print(i[0], i[1], i[2])
+        socket.sendto(bytes(cmt, "utf-8"), (i[1],int(i[2])))
+
+
+def sessionMode(ip, port):
+    global sessionUsersList
+    global exitSession_var
+
+    clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    clientSocket.bind((ip, int(port)))
+    
+    exitSession_var = 0
+
+    sessionListThread = threading.Thread(target=updateSessionListThread)
+    chatsThread = threading.Thread(target=chatsSessionThread, args=(clientSocket,))
+
+    sessionListThread.start()
+    chatsThread.start()
+
+    while True:
+        print("1 Post Comment\n2 Exit Session")
+        cmd = int(input())
+        if(cmd==1):
+            print("Comment Content: ")
+            cmt = input()
+            broadcastComment(clientSocket, cmt)
+        elif(cmd==2):
+            exitSession_var = 1
+            sessionListThread.join()
+            chatsThread.join()
+            clientSocket.close()
+            break
+    
+    return exitSession(ip, port)
+            
+
+
+
+    
 
 request = myAppProtocol.Request("GETLOGINPAGE")
 Socket = getConnectiontoServer()
@@ -111,6 +220,17 @@ while True:
             print("Comment Comtent: ")
             comment = input()
             request.setnewcommentparams(discussion_id, comment_type, comment)
+        elif cmd=="START SESSION" or cmd=="JOIN SESSION":
+            request.setsessiondetails(MY_IP, '8888')
+            Socket = getConnectiontoServer()
+            myAppProtocol.sendAppProtocolPacket(Socket, request)
+            responseMsg = myAppProtocol.receiveAppProtocolPacket(Socket,TCP_BUFFER)
+            Socket.close()
+            responseMsg = json.loads(responseMsg)
+            if(responseMsg["error"]==0):
+                responseMsg = sessionMode(MY_IP, '8888')
+            print(responseMsg["message"])
+            continue
         
     Socket = getConnectiontoServer()
     myAppProtocol.sendAppProtocolPacket(Socket, request)

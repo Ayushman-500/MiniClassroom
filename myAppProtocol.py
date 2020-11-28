@@ -40,6 +40,9 @@ class Request:
         self.dict["comment_type"] = comment_type
         self.dict["comment"] = comment
 
+    def setsessiondetails(self, ip, port):
+        self.dict["ip"] = ip
+        self.dict["port"] = port
 
 class Response:
     def __init__(self, error, msg, cmd_list):
