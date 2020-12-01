@@ -21,7 +21,7 @@ LOCS = ["LOGINPAGE", "HOME_INSTRUCTOR", "HOME_STUDENT", "MYCLASSES", "INSIDECLAS
 LOC_CMD_MAP = {"LOGINPAGE":["LOGIN", "REGISTER"],
             "HOME_INSTRUCTOR":["CREATE CLASS", "MY CLASSES", "LOGOUT"],
             "MYCLASSES":["HOME"],
-            "INSIDECLASS_INSTRUCTOR":["HOME","NEW POST","GET ALL POSTS","GET POST BY KEYWORD", "NEW DISCUSSION", "DISCUSSIONS", "GET DISCUSSION COMMENTS", "POST DISCUSSION COMMENT", "START SESSION", "LOGOUT"],
+            "INSIDECLASS_INSTRUCTOR":["HOME","NEW POST","GET ALL POSTS","GET POST BY KEYWORD", "NEW DISCUSSION", "DISCUSSIONS", "GET DISCUSSION COMMENTS", "POST DISCUSSION COMMENT", "START SESSION", "VIEW STUDENTS","LOGOUT"],
             "HOME_STUDENT":["JOIN CLASS", "MY CLASSES", "LOGOUT"],
             "INSIDECLASS_STUDENT":["HOME","GET ALL POSTS", "GET POST BY KEYWORD", "DISCUSSIONS", "GET DISCUSSION COMMENTS", "POST DISCUSSION COMMENT", "JOIN SESSION", "LOGOUT"],
             "SESSIONMODE":["GET SESSION USERS", "EXIT SESSION"]}
@@ -270,6 +270,26 @@ def getClassname(classroomId):
     c.execute("SELECT classname FROM classrooms WHERE classroomId =?", (classroomId,))
     classname = c.fetchall()[0][0]
     return classname
+
+
+def viewStudents(classroomId):
+    conn, c = getconnectiontodb()
+    try:
+        lock.acquire()
+        # Create the metadata about class if not already exists
+        c.execute("CREATE TABLE IF NOT EXISTS classrooms (classroomId INTEGER PRIMARY KEY AUTOINCREMENT, \
+                    username text NOT NULL, classname text NOT NULL);")
+        c.execute("CREATE TABLE IF NOT EXISTS classroomMembers (classroomId integer UNSIGNED NOT NULL,\
+                    username text NOT NULL);")
+        conn.commit()
+    finally:
+        lock.release()
+
+    c.execute("SELECT username FROM classroomMembers WHERE classroomId=?", (classroomId,))
+    rows = c.fetchall()
+    json_output = json.dumps(rows)
+    return(json_output)
+
 
 
 def getpost(class_id,username):
@@ -607,6 +627,19 @@ def handleClient(clientSocket, address):
                             response = myAppProtocol.Response(0, msg, LOC_CMD_MAP["INSIDECLASS_STUDENT"])
                         saveClientState(username, clientstate)
                         myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                    elif (RequestObj["command"]=="VIEW STUDENTS"):
+                        username = RequestObj["username"]
+                        usertype = getUserType(username)
+                        usertype, clientState = getClientState(RequestObj["username"])
+                        classroomId = clientState['class_id']
+                        if(classroomId==-1):
+                            response = myAppProtocol.Response(1, "Login to a class first", clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+                        else:
+                            rows = viewStudents(classroomId)
+                            response = myAppProtocol.Response(0, rows, clientState["cmd_list"])
+                            myAppProtocol.sendAppProtocolPacket(clientSocket, response)
+
                     elif(RequestObj["command"]=="NEW POST"):
                         usertype, clientState = getClientState(RequestObj["username"])
                         if(clientState['class_id'] ==-1):
