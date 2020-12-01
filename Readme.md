@@ -1,7 +1,7 @@
 ## To Run the project
-cd to the directory which has the server.py and client.py
-Terminal 1: python3 server.py
-Terminal 2: python3 client.py
+cd to the directory which has the server.py and client.py <br>
+Server Terminal: python3 server.py server_ip <br>
+Client Terminal: python3 client.py client_ip server_ip <br>
 Terminal 2 will then show instructions to proceed.
 
 ![Client States](MiniClassStates.png)
@@ -30,6 +30,11 @@ The Client program has no states. First time it sends a command "GETLOGINPAGE", 
 ## Commands and Actions Management
 Clients can only use the commands made available by the server. The server manages and executes the actions of each command after it has authenticated the user and checked if the command is available to the user.
 
+<br>
+
 ## Security Aspects
-Everytime the client connects to the server for accessing a feature or execution of a command, the server first authenticates the client and then proceeds with the execution.
-For multithreading, locks are held when writing to database tables.
+Everytime the client connects to the server for accessing a feature or execution of a command, the server first authenticates the client and then proceeds with the execution.<br>
+For multithreading, locks are held when writing to database tables.<br>
+The password is obscured duing taking input in login or register<br>
+The password is encrypted and send to the server<br>
+Only the Instructor can post, start a new discussion, start a new session and view list of enrolled students.
