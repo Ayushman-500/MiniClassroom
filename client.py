@@ -8,6 +8,7 @@ import json
 import getpass
 import threading
 import time
+import hashlib
 
 TCP_BUFFER = 1024
 COMMANDS = {1: "LOGIN", 2: "REGISTER", 3: "CREATECLASS", 4: "POST", 5: "JOIN CLASS"}
@@ -165,6 +166,7 @@ while True:
         # print("password")
         # password = input()
         password = getpass.getpass()
+        password = hashlib.md5(password.encode()).hexdigest()
         request.setuserdetails(username, password)
     
     elif cmd=="REGISTER":
@@ -173,6 +175,7 @@ while True:
         # print("password")
         # password = input()
         password = getpass.getpass()
+        password = hashlib.md5(password.encode()).hexdigest()
         request.setuserdetails(username, password)
         print("Usertype (1:Instructor 2:Student)")
         ut = int(input())
