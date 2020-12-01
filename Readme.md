@@ -33,5 +33,8 @@ Clients can only use the commands made available by the server. The server manag
 <br>
 
 ## Security Aspects
-Everytime the client connects to the server for accessing a feature or execution of a command, the server first authenticates the client and then proceeds with the execution.
-For multithreading, locks are held when writing to database tables.
+Everytime the client connects to the server for accessing a feature or execution of a command, the server first authenticates the client and then proceeds with the execution.<br>
+For multithreading, locks are held when writing to database tables.<br>
+The password is obscured duing taking input in login or register<br>
+The password is encrypted and send to the server<br>
+Only the Instructor can post, start a new discussion, start a new session and view list of enrolled students.
