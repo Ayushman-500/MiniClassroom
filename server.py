@@ -224,8 +224,14 @@ def joinClass(classroomId, username):
 
     # Updating the client state for the joined class
     classname = getClassname(classroomId)
-    clientState["cmd_list"].append([classname, classroomId])
-    saveClientState(username, clientState)
+    if(clientState["loc"]=="MYCLASSES"):
+        clientState["cmd_list"].append([classname, classroomId])
+        saveClientState(username, clientState)
+    else:
+        clientState["loc"] = "MYCLASSES"
+        clientState["cmd_list"] = ["HOME", [classname, classroomId]]
+        saveClientState(username, clientState)
+
     return 1
 
 
@@ -251,6 +257,9 @@ def myClasses(username, usertype):
         c.execute("SELECT classname, classroomid FROM classrooms WHERE username=?", (username,))
         rows = c.fetchall()
 
+    if (len(rows) == 0):
+        return 2
+
     # Save client state
     cmd_list = ["HOME"]
     for r in rows:
@@ -259,8 +268,6 @@ def myClasses(username, usertype):
     clientState = createNewClientState("MYCLASSES", cmd_list, -1)
     saveClientState(username, clientState)
     
-    if (len(rows) == 0):
-        return 2
     
     return 1
 
