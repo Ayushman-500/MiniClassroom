@@ -1,6 +1,6 @@
 # Mini Classroom
 
-We have designed and implemented a simple command line based tool (Mini-Classroom) using clients and server that mimics the necessary functionalities and features of a google classroom. <br>
+We have designed and implemented a simple command line based tool (Mini-Classroom) using clients and server that mimics the necessary functionalities and features of google classroom. <br>
 
 ## To Run the project
 cd to the directory which has the server.py and client.py <br>
